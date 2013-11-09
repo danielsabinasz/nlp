@@ -43,6 +43,14 @@ int main(int argc, char **argv) {
 
 	// Dictionary
 	dictionary *dict = new dictionary();
+
+	// Class prior probabilities
+	typedef map<string, double> class_prior_probabilities_map;
+	class_prior_probabilities_map class_prior_probabilities;
+
+	// Class count model Poisson parameters
+	typedef map<string, double> class_poisson_map;
+	class_poisson_map class_poisson;
 	
 	// Word frequencies per class
 	typedef map<unsigned int, double> word_freq_map;
@@ -59,6 +67,16 @@ int main(int argc, char **argv) {
 		// Class name
 		string class_name;
 		iss >> class_name;
+
+		// p(c)
+		double class_prior_probability;
+		iss >> class_prior_probability;
+		class_prior_probabilities[class_name] = class_prior_probability;
+
+		// p(N|c) Poisson parameter
+		double count_model_poisson;
+		iss >> count_model_poisson;
+		class_poisson[class_name] = count_model_poisson;
 
 		string word;
 		double relative_frequency;
@@ -106,7 +124,7 @@ int main(int argc, char **argv) {
 			document_length += word_count;
 
 			// Store word count
-			word_counts[word_id] = word_counts;
+			word_counts[word_id] = word_count;
 		}
 
 		// Now, for each class c calculate the probability p(c) * p(N|c) * p(N_1^W | N, c)

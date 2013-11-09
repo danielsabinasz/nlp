@@ -15,7 +15,7 @@ using namespace std;
 int main(int argc, char **argv) {
 	if (argc < 2) {
 		cout << "usage: " << argv[0]
-		<< " <training set filename>"
+		<< " <training set filename (.tr)>"
 		<< " [<vocabulary filename>]"
 		<< endl;
 		return EXIT_FAILURE;
@@ -61,11 +61,24 @@ int main(int argc, char **argv) {
 	// (map class names to a map that maps word ids to counts)
 	typedef map<unsigned int, unsigned int> word_counts_map;
 	typedef map<string, word_counts_map> class_word_counts_map;
-	class_word_counts_map word_counts;
+	class_word_counts_map class_word_counts;
 
 	// Track total word count per class
 	typedef map<string, unsigned int> class_total_word_counts_map;
-	class_total_word_counts_map total_word_counts;
+	class_total_word_counts_map class_total_word_counts;
+
+	// Track total document count per class (for our p(c) model)
+	typedef map<string, unsigned int> class_document_count_map;
+	class_document_count_map class_document_count;
+
+	// Track total document count (for our p(c) model)
+	unsigned int total_document_count = 0;
+
+	// For our Poisson P(N|c) model, track the sum of the document lengths per class.
+	// This sum will later be divided by the number of documents in that class,
+	// yielding the maximum likelihood estimate for the Poisson parameter
+	typedef map<string, unsigned int> class_document_length_sum_map;
+	class_document_length_sum_map class_document_length_sum;
 
 	// Iterate file line by line (each line represents a document)
 	string document;
@@ -80,6 +93,15 @@ int main(int argc, char **argv) {
 		// Document class
 		string document_class;
 		iss >> document_class;
+
+		// Increase document count for this class
+		if (class_document_count.count(document_class) == 0) {
+			class_document_count[document_class] = 0;
+		}
+		class_document_count[document_class]++;
+
+		// Increase total document count
+		total_document_count++;
 
 		// Document length (N)
 		unsigned int document_length = 0;
@@ -100,25 +122,42 @@ int main(int argc, char **argv) {
 			document_length += word_count;
 
 			// Increase class-wide word count for this word
-			if (word_counts[document_class].count(word_id) == 0) {
-				word_counts[document_class][word_id] = 0;
+			if (class_word_counts[document_class].count(word_id) == 0) {
+				class_word_counts[document_class][word_id] = 0;
 			}
-			word_counts[document_class][word_id]++;
+			class_word_counts[document_class][word_id]++;
 
 			// Increase class-wide total word count
-			if (total_word_counts.count(document_class) == 0) {
-				total_word_counts[document_class] = 0;
+			if (class_total_word_counts.count(document_class) == 0) {
+				class_total_word_counts[document_class] = 0;
 			}
-			total_word_counts[document_class]++;
+			class_total_word_counts[document_class]++;
 		}
+
+		// Increase sum of document lengths for the class
+		if (class_document_length_sum.count(document_class) == 0) {
+			class_document_length_sum[document_class] = 0;
+		}
+		class_document_length_sum[document_class] += document_length;
 	}
 
 	// Iterate all classes
-	for (class_word_counts_map::iterator it = word_counts.begin(); it != word_counts.end(); it++) {
+	for (class_word_counts_map::iterator it = class_word_counts.begin(); it != class_word_counts.end(); it++) {
 		string class_name = it->first;
-		int total_word_count = total_word_counts[class_name];
 
-		cout << class_name << ":" << endl;
+		// Determine relative frequency of the class in total (for our p(c) model)
+		// (stored as negative logarithm for numeric stability;
+		// this is the same as -log(document_count/total_document_count)
+		double class_freq = log(total_document_count) - log(class_document_count[class_name]);
+
+		// Determine average length for documents of this class (i.e. the Poisson parameter for the P(N|c) model)
+		double poisson_parameter = class_document_length_sum[class_name]/class_document_count[class_name];
+
+		// Read total word count from map
+		int total_word_count = class_total_word_counts[class_name];
+
+		// Output class name, estimate for p(c) and Poisson parameter for p(N|c)
+		cout << class_name << " " << class_freq << " " << poisson_parameter << " ";
 
 		// Iterate all words for that class
 		for (word_counts_map::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++) {
@@ -126,11 +165,9 @@ int main(int argc, char **argv) {
 			int word_count = it2->second;
 
 			// Determine relative frequency of that word in the class
-			// (stored as negative logarithm for numeric stability;
-			// this is the same as -log(word_count/total_word_count)
-			double rel_freq = log(total_word_count) - log(word_count);
+			double word_freq = log(total_word_count) - log(word_count);
 
-			cout << dict->word(word_id) << " " << rel_freq << endl;
+			cout << dict->word(word_id) << " " << word_freq << " ";
 		}
 
 		cout << endl;
