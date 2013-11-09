@@ -46,6 +46,9 @@ int main(int argc, char **argv) {
 		string document_class;
 		iss >> document_class;
 
+		// Document length (N)
+		int document_length = 0;
+
 		string word;
 		int word_count;
 		while (iss >> word) {
@@ -54,6 +57,9 @@ int main(int argc, char **argv) {
 
 			// Word count
 			iss >> word_count;
+
+			// Increase document length
+			document_length += word_count;
 		}
 	}
 
