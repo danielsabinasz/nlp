@@ -12,10 +12,9 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-	if (argc != 3) {
+	if (argc != 2) {
 		cout << "usage: " << argv[0]
-		<< " <filename>"
-		<< " <n>"
+		<< " <training set file>"
 		<< endl;
 		return EXIT_FAILURE;
 	}
@@ -30,71 +29,33 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	// n most frequent words
-	unsigned int n = atoi(argv[2]);
-	
-	// Vector containing tuple of frequency and word id
-	vector<pair<unsigned int, unsigned int>> *freq = new vector<pair<unsigned int, unsigned int>>();
-
 	// dictionary
 	dictionary *dict = new dictionary();
 
-	// Iterate file line by line
-	string line;
-	while (getline(f, line)) {
-		// Iterate line word by word
-		istringstream iss(line);
-		string word;
-		while (iss >> word) {
-			// Word to lower
-			string word_lower = word;
-			transform(word_lower.begin(), word_lower.end(), word_lower.begin(), ::tolower);
+	// Iterate file line by line (each line represents a document)
+	string document;
+	while (getline(f, document)) {
+		// Tokenize the document
+		istringstream iss(document);
+		
+		// Document name
+		string document_name;
+		iss >> document_name;
 
+		// Document class
+		string document_class;
+		iss >> document_class;
+
+		string word;
+		int word_count;
+		while (iss >> word) {
 			// Get word id
-			unsigned int word_id = dict->id(word_lower);
+			unsigned int word_id = dict->id(word);
 
-			// If the word is new, add frequency counter
-			if (word_id >= freq->size()) {
-				freq->push_back(pair<unsigned int, unsigned int>(0, word_id));
-			}
-
-			// Increase frequency counter
-			freq->at(word_id).first += 1;
-
+			// Word count
+			iss >> word_count;
 		}
 	}
 
-	// Sort frequencies
-	sort(freq->rbegin(), freq->rend());
-
-	// Unordered set holding the n most frequent words
-	unordered_set<unsigned int> *most_freq = new unordered_set<unsigned int>();
-
-	// Determine n most frequent words
-	vector<pair<unsigned int, unsigned int>>::iterator it;
-	unsigned int i = 0;
-	for (it = freq->begin(); i < n && it != freq->end(); i++, it++) {
-		most_freq->insert(it->second);
-	}
-
-	// Iterate file again
-	f.clear();
-	f.seekg(0);
-	while (getline(f, line)) {
-		istringstream iss(line);
-		string word;
-		while (iss >> word) {
-			// Word to lower
-			string word_lower = word;
-			transform(word_lower.begin(), word_lower.end(), word_lower.begin(), ::tolower);
-
-			unsigned int word_id = dict->id(word_lower);
-
-			if (most_freq->count(word_id) == 0) cout << "<UNK>";
-			else cout << word;
-			cout << " ";
-		}
-		cout << endl;
-	}
 }
 
