@@ -6,27 +6,52 @@
 #include <tuple>
 #include <algorithm>
 #include <unordered_set>
+#include <math.h>
 
 #include "dictionary.hh"
 
 using namespace std;
 
 int main(int argc, char **argv) {
-	if (argc != 2) {
+	if (argc < 2) {
 		cout << "usage: " << argv[0]
-		<< " <training set file>"
+		<< " <training set filename>"
+		<< " [<vocabulary filename>]"
 		<< endl;
 		return EXIT_FAILURE;
 	}
 
-	// Check file
-	char *filename = argv[1];
-	ifstream f(filename);
-	if (!f.good()) {
+	// Check training set file
+	char *training_set_filename = argv[1];
+	ifstream f_train(training_set_filename);
+	if (!f_train.good()) {
 		cerr << "ERROR: Opening file '"
-		<< filename << "' failed."
+		<< training_set_filename << "' failed."
 		<< endl;
 		return EXIT_FAILURE;
+	}
+
+	// If a vocabulary has been specified, load it
+	bool restrict_vocabulary = false;
+	unordered_set<string> restrict_vocabulary_set;
+	if (argc >= 3) {
+		restrict_vocabulary = true;
+
+		// Check vocabulary file
+		char *vocabulary_filename = argv[2];
+		ifstream f_voc(vocabulary_filename);
+		if (!f_voc.good()) {
+			cerr << "ERROR: Opening file '"
+			<< vocabulary_filename << "' failed."
+			<< endl;
+			return EXIT_FAILURE;
+		}
+
+		// Read file line by line
+		string word;
+		while (getline(f_voc, word)) {
+			restrict_vocabulary_set.insert(word);
+		}
 	}
 
 	// Dictionary
@@ -44,7 +69,7 @@ int main(int argc, char **argv) {
 
 	// Iterate file line by line (each line represents a document)
 	string document;
-	while (getline(f, document)) {
+	while (getline(f_train, document)) {
 		// Tokenize the document
 		istringstream iss(document);
 		
@@ -62,11 +87,14 @@ int main(int argc, char **argv) {
 		string word;
 		unsigned int word_count;
 		while (iss >> word) {
-			// Get word id
-			unsigned int word_id = dict->id(word);
-
 			// Word count
 			iss >> word_count;
+
+			// If a vocabulary has been specified, check whether this word is in it
+			if (restrict_vocabulary && restrict_vocabulary_set.count(word) == 0) continue;
+
+			// Get word id
+			unsigned int word_id = dict->id(word);
 
 			// Increase document length
 			document_length += word_count;
