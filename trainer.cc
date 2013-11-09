@@ -34,7 +34,9 @@ int main(int argc, char **argv) {
 
 	// Track class-wide word counts
 	// (map class names to a map that maps word ids to counts)
-	map<string, map<unsigned int, unsigned int>> word_counts;
+	typedef map<unsigned int, unsigned int> word_counts_map;
+	typedef map<string, word_counts_map> class_word_counts_map;
+	class_word_counts_map word_counts;
 
 	// Iterate file line by line (each line represents a document)
 	string document;
