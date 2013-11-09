@@ -29,8 +29,12 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	// dictionary
+	// Dictionary
 	dictionary *dict = new dictionary();
+
+	// Track class-wide word frequencies
+	// (map class names to a map that maps word ids to counts)
+	map<string, map<unsigned int, unsigned int>> word_counts;
 
 	// Iterate file line by line (each line represents a document)
 	string document;
@@ -47,10 +51,10 @@ int main(int argc, char **argv) {
 		iss >> document_class;
 
 		// Document length (N)
-		int document_length = 0;
+		unsigned int document_length = 0;
 
 		string word;
-		int word_count;
+		unsigned int word_count;
 		while (iss >> word) {
 			// Get word id
 			unsigned int word_id = dict->id(word);
@@ -60,6 +64,12 @@ int main(int argc, char **argv) {
 
 			// Increase document length
 			document_length += word_count;
+
+			// Increase class-wide word count for this word
+			if (word_counts[document_class].count(word_id) == 0) {
+				word_counts[document_class][word_id] = 0;
+			}
+			word_counts[document_class][word_id]++;
 		}
 	}
 
