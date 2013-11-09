@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 	// Dictionary
 	dictionary *dict = new dictionary();
 
-	// Track class-wide word frequencies
+	// Track class-wide word counts
 	// (map class names to a map that maps word ids to counts)
 	map<string, map<unsigned int, unsigned int>> word_counts;
 
