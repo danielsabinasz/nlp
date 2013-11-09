@@ -22,3 +22,8 @@ string dictionary::word(unsigned int key) {
     return ids_to_words.at(key);
 }
 
+// Get total word count
+unsigned int dictionary::getWordCount() {
+	return ids_to_words.size();
+}
+

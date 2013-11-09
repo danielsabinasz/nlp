@@ -15,6 +15,7 @@ class dictionary {
         dictionary();
         unsigned int id(string key);
         string word(unsigned int key);
+	unsigned int getWordCount();
 };
 
 #endif
