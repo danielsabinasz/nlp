@@ -174,6 +174,7 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 	ifstream testDataFileStream(testDataFile);
   	if(testDataFileStream.is_open()){
 		int i = 0;
+		int errorCount = 0;
 		while(getline(testDataFileStream, line) && i < 1){
 			vector<string> words;
 			istringstream iss(line);
@@ -198,24 +199,35 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 			int selectedIndex = -1;
 			double selectedConfidence = -numeric_limits<long double>::max();
 			for(int categoryIndex : categoryCount->getIndices()){
-				long double confidence = (((long double) (*categoryWordCount)[categoryIndex].getTotalQuantity() /  (long double) totalQuantity));
+				long double wordsInClass = (long double) (*categoryWordCount)[categoryIndex].getTotalQuantity();
+				//long double confidence = log(wordsInClass) - log((long double) totalQuantity);
+				long double confidence = log(wordsInClass / ((long double) totalQuantity));
+				
 				for(int wordIndex : wordIndices){
-					long double prob = (*categoryWordCount)[categoryIndex].getProbability(wordIndex);
+					long double wordQuantity = (long double) (*categoryWordCount)[categoryIndex].getQuantity(wordIndex);
+					//long double logProb = log(wordQuantity) - log(wordsInClass);
+					long double logProb = log(wordQuantity / wordsInClass);
 					int count = wordCounts.getQuantity(wordIndex);
 					//cout << "Prob: " << prob << ", Count: " << count << endl;
 					
-					confidence += log(prob) * count;
+					confidence += logProb * count;
 				}
 				//cout << "Confidence for category \"" << categoryCount->getDictionary()->getWord(categoryIndex) << "\": " << confidence << endl;
-				if(confidence >= selectedConfidence){
+				if(confidence > selectedConfidence){
 					selectedConfidence = confidence;
 					selectedIndex = categoryIndex;
 				}
 			}
 			cout << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
+			if(selectedIndex != index){
+				errorCount++;
+			}
 			//i++;
 		}
 		
+		//print number of errors in classification:
+		cout << "Errors: " << errorCount << endl;
+
     	testDataFileStream.close();
 		return true;
   	}else{
