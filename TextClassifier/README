@@ -1,0 +1,4 @@
+Usage:
+	./textclassifier [-v <vocabulary file> [-n number of words to be considered]] -t <traing data set> -d <test data set>
+
+Problem: if training data set is too large and the relative frequencies of the words become too small, the precision of long double values are not sufficient for calculating the probability of p(c |  w_1^N)
