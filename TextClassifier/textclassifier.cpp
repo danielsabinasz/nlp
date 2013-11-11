@@ -12,15 +12,26 @@
 #include <limits>
 #include <memory>
 
-//#define VERBOSE
+#define VERBOSE
+#define SMOOTHING
 
 using namespace dictionary;
 using namespace std;
 
+//read vocabulary file
 bool readVocabulary(string, shared_ptr<Dictionary>, int);
+
+//read training datafile, compute relative frequencies
 bool readTrainingFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>, int&);
+
+//write computed probabilities into file
 void writeProbabilitiesToFile(shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, shared_ptr<Dictionary>, int&);
+
+//read words from test file, used for smooting!
 bool readTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>, int&);
+
+//categorize texts from test file, prints selected category, confidence for category and the true category
+bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary, int& totalQuantity);
 
 int main(int argc, char** argv){
 	//global dictionary for all words
@@ -62,21 +73,27 @@ int main(int argc, char** argv){
 	}else{
 		cout << "No vocabulary used." << endl;
 	}
-
-	//read training data file:
+	
+//read training data file:
 	string trainingDataFile = parser.getFlagValue("-t");
 	cout << "Using file \"" << trainingDataFile << "\" for training data." << endl;
 	readTrainingFile(trainingDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
-
-#ifdef VERBOSE
-	writeProbabilitiesToFile(categoryCount, categoryWordCount, dictionary, totalQuantity);
-#endif
-
+	
 	//read test data file:
 	string testDataFile = parser.getFlagValue("-d");
 	cout << "Using file \"" << testDataFile << "\" for test data." << endl;
 	readTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
+	
+#ifdef VERBOSE
+	writeProbabilitiesToFile(categoryCount, categoryWordCount, dictionary, totalQuantity);
+#endif
 
+	//categorization of test data file:
+	cout << "Categorizing texts from file \"" << testDataFile << "\"." << endl;
+	categorizationOfTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
+
+	//print information about the dictionary:
+	cout << "Dictionary-size: " << dictionary->getIndices().size() << endl;
 	exit(0);
 }
 
@@ -87,7 +104,7 @@ bool readVocabulary(string vocabularyFile, shared_ptr<Dictionary> dictionary, in
   	if(vocabularyFileStream.is_open()){
 		int i = 0;    	
 		while(getline(vocabularyFileStream, word) && (number == -1 || i < number)){
-      		int index = dictionary->addWord(word);
+      		/*int index = */dictionary->addWord(word);
 			i++;
 
 			//cout << "Added word: " << word << ", index: " << index << endl;
@@ -173,9 +190,48 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 	string line;
 	ifstream testDataFileStream(testDataFile);
   	if(testDataFileStream.is_open()){
-		int i = 0;
+		while(getline(testDataFileStream, line)){
+			vector<string> words;
+			istringstream iss(line);
+			string sub;
+			while(iss >> sub){
+				words.push_back(sub);
+      		}
+			
+			for(unsigned int i = 2; i < words.size(); i += 2){
+				string word = words[i];
+				if(lockedWordDictionary == false){
+					dictionary->addWord(word);
+				}
+			}
+		}
+
+#ifdef SMOOTHING
+		cout << "Apply smooting: prob(w | c) = (N(w,c)+1 / sum of all N(w', c) per category" << endl;
+		for(CountStructure& cStruct : *categoryWordCount){
+			cStruct.applyAbsoluteSmooting();
+		}
+#endif
+
+		return true;
+  	}else{
+		cout << "Unable to open file"; 
+		return false;
+	}
+}
+
+bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary, int& totalQuantity){
+#ifdef VERBOSE
+	ofstream categoryAssignmentFile("result.txt");
+#endif
+	string line;
+	ifstream testDataFileStream(testDataFile);
+  	if(testDataFileStream.is_open()){
 		int errorCount = 0;
-		while(getline(testDataFileStream, line) && i < 1){
+		int error = 0;
+		int textCount = 0;
+		while(getline(testDataFileStream, line)){
+			textCount++;
 			vector<string> words;
 			istringstream iss(line);
 			string sub;
@@ -194,7 +250,8 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 					wordIndices.push_back(index);
 				}
 			}
-			//get true category
+
+			//get true category for actual text
 			int index = categoryCount->getDictionary()->getIndex(category);
 			int selectedIndex = -1;
 			double selectedConfidence = -numeric_limits<long double>::max();
@@ -208,27 +265,41 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 					//long double logProb = log(wordQuantity) - log(wordsInClass);
 					long double logProb = log(wordQuantity / wordsInClass);
 					int count = wordCounts.getQuantity(wordIndex);
-					//cout << "Prob: " << prob << ", Count: " << count << endl;
 					
 					confidence += logProb * count;
 				}
-				//cout << "Confidence for category \"" << categoryCount->getDictionary()->getWord(categoryIndex) << "\": " << confidence << endl;
 				if(confidence > selectedConfidence){
 					selectedConfidence = confidence;
 					selectedIndex = categoryIndex;
 				}
 			}
 			cout << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
+
+#ifdef VERBOSE
+			//write result of assignment to file
+			categoryAssignmentFile << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
+#endif
+
 			if(selectedIndex != index){
 				errorCount++;
 			}
-			//i++;
+			if(selectedIndex == -1){
+				error++;
+			}
 		}
 		
 		//print number of errors in classification:
-		cout << "Errors: " << errorCount << endl;
+		cout << "False category assigned in: " << errorCount << " cases (" << textCount << " texts)." << endl;
+		cout << "No category assigned in: " << error << " cases." << endl;
+#ifdef VERBOSE
+		//write error counts to result file
+		categoryAssignmentFile << "False category assigned in: " << errorCount << " cases (" << textCount << " texts)." << endl;
+		categoryAssignmentFile << "No category assigned in: " << error << " cases." << endl;
+		categoryAssignmentFile.close();
+#endif
 
     	testDataFileStream.close();
+		
 		return true;
   	}else{
 		cout << "Unable to open file"; 

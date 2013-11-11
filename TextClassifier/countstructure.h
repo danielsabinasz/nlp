@@ -31,6 +31,8 @@ class CountStructure{
 
 		std::shared_ptr<Dictionary> getDictionary();
 
+		void applyAbsoluteSmooting();
+
 	private:
 		int increaseQuantity(int);
 		int increaseQuantity(int, int);

@@ -1,5 +1,7 @@
 #include "countstructure.h"
 
+#include <iostream>
+
 using namespace std;
 using namespace dictionary;
 
@@ -39,7 +41,7 @@ int CountStructure::addWord(string word, int quantity){
 //parameter locked: if a vocabulary has been used: do not add words if locked flag is set.
 //returns -1 if word could not be add to dictionary
 int CountStructure::addWord(string word, int quantity, bool locked){
-	if(locked == true && dictionary_->getIndex(word) == -1){	
+	if(locked == true && dictionary_->getIndex(word) == -1){
 		return -1;
 	}
 	return addWord(word, quantity);
@@ -110,4 +112,10 @@ int CountStructure::getTotalQuantity(){
 
 long double CountStructure::getProbability(int index){
 	return ((long double)this->getQuantity(index) / (long double)this->getTotalQuantity());
+}
+
+void CountStructure::applyAbsoluteSmooting(){
+	for(int index : dictionary_->getIndices()){
+		increaseQuantity(index);
+	}
 }
