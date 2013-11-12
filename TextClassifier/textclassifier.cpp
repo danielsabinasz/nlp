@@ -18,7 +18,11 @@
 using namespace dictionary;
 using namespace std;
 
-//int confusion[20][20];
+#ifdef VERBOSE
+//matrix for storing counts for incorrect assignment
+int confusion[20][20];
+void printConfusionMatrix();
+#endif
 
 //read vocabulary file
 bool readVocabulary(string, shared_ptr<Dictionary>, int);
@@ -34,8 +38,6 @@ bool readTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountS
 
 //categorize texts from test file, prints selected category, confidence for category and the true category
 bool categorizationOfTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>);
-
-//void printConfusionMatrix();
 
 int main(int argc, char** argv){
 
@@ -274,9 +276,10 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 			}
 			cout << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
 			
-			//confusion[index][selectedIndex]++;
+			
 
 #ifdef VERBOSE
+			confusion[index][selectedIndex]++;
 			//write result of assignment to file
 			categoryAssignmentFile << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
 #endif
@@ -297,8 +300,9 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 		categoryAssignmentFile << "False category assigned in: " << errorCount << " cases (" << textCount << " texts)." << endl;
 		categoryAssignmentFile << "No category assigned in: " << error << " cases." << endl;
 		categoryAssignmentFile.close();
+		printConfusionMatrix();
 #endif
-		//printConfusionMatrix();
+		
     	testDataFileStream.close();
 		
 		return true;
@@ -307,7 +311,8 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 		return false;
 	}
 }
-/*
+
+#ifdef VERBOSE
 void printConfusionMatrix(){
 	int sum[20];
 	for(int correct = 0; correct < 20; correct++){
@@ -341,4 +346,4 @@ void printConfusionMatrix(){
 		cout << endl;
 	}
 }
-*/
+#endif
