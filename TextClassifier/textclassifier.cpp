@@ -18,6 +18,8 @@
 using namespace dictionary;
 using namespace std;
 
+//int confusion[20][20];
+
 //read vocabulary file
 bool readVocabulary(string, shared_ptr<Dictionary>, int);
 
@@ -32,6 +34,8 @@ bool readTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountS
 
 //categorize texts from test file, prints selected category, confidence for category and the true category
 bool categorizationOfTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>);
+
+//void printConfusionMatrix();
 
 int main(int argc, char** argv){
 
@@ -269,6 +273,8 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 				}
 			}
 			cout << "Selected category: \"" << categoryCount->getDictionary()->getWord(selectedIndex) << "\" (confidence: " << selectedConfidence << "), correct category: \"" << categoryCount->getDictionary()->getWord(index) << "\"" << endl;
+			
+			//confusion[index][selectedIndex]++;
 
 #ifdef VERBOSE
 			//write result of assignment to file
@@ -292,7 +298,7 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 		categoryAssignmentFile << "No category assigned in: " << error << " cases." << endl;
 		categoryAssignmentFile.close();
 #endif
-
+		//printConfusionMatrix();
     	testDataFileStream.close();
 		
 		return true;
@@ -301,3 +307,38 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 		return false;
 	}
 }
+/*
+void printConfusionMatrix(){
+	int sum[20];
+	for(int correct = 0; correct < 20; correct++){
+		for(int hypo = 0; hypo < 20; hypo++){
+			sum[correct] += confusion[correct][hypo];
+		}
+	}
+	long double confusion2[20][20];
+	for(int correct = 0; correct < 20; correct++){
+		for(int hypo = 0; hypo < 20; hypo++){
+			confusion2[correct][hypo] = (((long double) confusion[correct][hypo]) / sum[correct]);
+		}
+	}
+	cout << "Confusion Matrix:" << endl;
+	cout.precision(4);
+	for(int hypo = 0; hypo < 20; hypo++){
+		for(int correct = 0; correct < 20; correct++){
+			ostringstream s;
+			s.precision(3);
+			s << confusion2[correct][hypo];
+			int size = s.str().size();
+			if(s.str().size() < 5){
+				for(int i = size; i < 5; i++){
+					s << " ";
+				}
+			}
+			string str = s.str();
+			str.resize(5);
+			cout << str << " ";				
+		}
+		cout << endl;
+	}
+}
+*/
