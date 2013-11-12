@@ -1,4 +1,19 @@
+Text-Classification System:
+
 Usage:
 	./textclassifier [-v <vocabulary file> [-n number of words to be considered]] -t <traing data set> -d <test data set>
 
-Problem: if training data set is too large and the relative frequencies of the words become too small, the precision of long double values are not sufficient for calculating the probability of p(c |  w_1^N)
+The Text-Classification process is divided into 3 / 4 steps (4 if an external vocabulary is used):
+
+1. read vocabulary (if provided): in this step all words from the vocabulary file are inserted into the internal dictionary of words. This also means that no other words can be add to the dictionary anymore! Additionally it is possible to use the first n words of a vocabulary file only.
+
+2. read training data file: here the training data file is read. Thereby all categories that appear are generated and each category is assigned a CountStructure, which is needed for storing the word counts for each word in every category. During this step for all texts in the training data set the word counts are stored for all words that appear in the texts of one category. This also means that some words that are part of the dictionary will have a count of 0 (sparse training data!). If no additional vocabulary was provided all words that appear will be add to the dictionary!
+
+3. read test data file: in this step the program checks the test data set for words that have not appeared in the training data set. These words are also added to the global dictionary file which is used in every CountStructure assigned to any category. If a word is added to the dictionary, all CountStructures will also have this word in "their" dictionary (dictionary is a shared pointer).
+Including the words from the test data is necessary (and only done) if no dictionary is given, because after adding the test data words to the dictionary the counts of the words in all categories are smoothed: the number of occurences of each word in the dictionary for every category is increased by 1, such that every event (word  w in category c) has a quantity of at least 1. The relative frequency $p(w | c)$ is computed by: $\frac{N(c, w)}{\sum\limits_{w'} N(c, w')}$. This guarantees that after smooting the number of occurences the probabilities still sum up to Unity. The relative frequency for each category $c$ is defined as following: $p(c) := \frac{N(c)}{\sum\limits_{c'} N(c')}$, which is the number of texts of a category divided by the total number of texts in the training data.
+
+4. categorization of texts in test data set: at least the texts from the test file are assigned to the best fitting ctegory.
+
+Datastructures:
+	- Dictionary: word <-> index
+	- CountStructure: index <-> quantities and sum of all quantites of all words in this CountStructure

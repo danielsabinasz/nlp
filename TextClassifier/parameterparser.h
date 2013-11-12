@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+/*
+* Parses the command lines arguments, such that they can be requested and to get their values.
+*/
 class ParameterParser{
 	public:
 		ParameterParser(char**, int);
