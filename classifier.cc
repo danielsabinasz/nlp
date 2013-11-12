@@ -12,6 +12,14 @@
 
 using namespace std;
 
+double log_factorial(int n) {
+	double ret = 0;
+	for (int k = n; k >= 2; k--) {
+		ret += log(k);
+	}
+	return ret;
+}
+
 int main(int argc, char **argv) {
 	if (argc < 3) {
 		cout << "usage: " << argv[0]
@@ -96,6 +104,9 @@ int main(int argc, char **argv) {
 	typedef map<unsigned int, unsigned int> word_count_map;
 
 	// Now read the documents file
+	int error_count = 0;
+	int total_count = 0;
+	int no_count = 0;
 	string document;
 	while (getline(f_doc, document)) {
 		// Tokenize the document
@@ -105,6 +116,10 @@ int main(int argc, char **argv) {
 		string document_name;
 		iss >> document_name;
 
+		// Document class
+		string document_class;
+		iss >> document_class;
+
 		// Document length (N)
 		unsigned int document_length = 0;
 
@@ -113,6 +128,7 @@ int main(int argc, char **argv) {
 
 		string word;
 		unsigned int word_count;
+		vector<unsigned int> word_ids;
 		while (iss >> word) {
 			// Word count
 			iss >> word_count;
@@ -125,16 +141,51 @@ int main(int argc, char **argv) {
 
 			// Store word count
 			word_counts[word_id] = word_count;
+
+			word_ids.push_back(word_id);
 		}
 
 		// Now, for each class c calculate the probability p(c) * p(N|c) * p(N_1^W | N, c)
 		// (slide 83)
+		// For faster and more exact calculation, we compute the negative logarithm of the probability instead
+		double minimum_cost = numeric_limits<double>::infinity();
+		string minimum_cost_class = "";
 		for (class_word_freq_map::iterator it = word_freq.begin(); it != word_freq.end(); it++) {
 			string class_name = it->first;
 
+			double cost_prior = class_prior_probabilities[class_name];
 			
+			double lambda = class_poisson[class_name];
+			double cost_length = lambda - document_length*log(lambda) + log_factorial(document_length);
+
+			double current_cost = cost_prior + cost_length;
+			for (vector<unsigned int>::iterator it2 = word_ids.begin(); it2 != word_ids.end(); it2++) {
+				unsigned int word_id = *it2;
+				unsigned int word_count = word_counts[word_id];
+
+				double word_cost;
+				if (word_freq[class_name].count(word_id) == 0) {
+					word_cost = numeric_limits<double>::infinity();
+					continue;
+				}
+				else word_cost = word_freq[class_name][word_id];
+
+				current_cost += word_count * word_cost;
+			}
+
+			if (current_cost < minimum_cost) {
+				minimum_cost = current_cost;
+				minimum_cost_class = class_name;
+			}
+		
 		}
+
+		total_count++;
+		if (minimum_cost_class == "") no_count++;
+		else if (document_class != minimum_cost_class) error_count++;
 	}
+
+	cout << "total: " << total_count << ", false: " << error_count << ", none: " << no_count << endl;
 
 }
 
