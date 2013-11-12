@@ -21,8 +21,6 @@ int CountStructure::addWord(string word){
 	return result;
 }
 
-//parameter locked: if a vocabulary has been used: do not add words if locked flag is set.
-//returns -1 if word could not be add to dictionary
 int CountStructure::addWord(string word, bool locked){
 	if(locked == true && dictionary_->getIndex(word) == -1){	
 		return -1;
@@ -38,8 +36,6 @@ int CountStructure::addWord(string word, int quantity){
 	return result;
 }
 
-//parameter locked: if a vocabulary has been used: do not add words if locked flag is set.
-//returns -1 if word could not be add to dictionary
 int CountStructure::addWord(string word, int quantity, bool locked){
 	if(locked == true && dictionary_->getIndex(word) == -1){
 		return -1;

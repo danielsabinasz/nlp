@@ -1,18 +1,18 @@
 #include "countstructure.h"
+#include "parameterparser.h"
+#include "dictionary.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
 #include <string>
 #include <iostream>
-#include "parameterparser.h"
-#include "dictionary.h"
 #include <fstream>
 #include <sstream> 
 #include <cmath>
 #include <limits>
 #include <memory>
 
-#define VERBOSE
+//#define VERBOSE
 #define SMOOTHING
 
 using namespace dictionary;
@@ -22,27 +22,28 @@ using namespace std;
 bool readVocabulary(string, shared_ptr<Dictionary>, int);
 
 //read training datafile, compute relative frequencies
-bool readTrainingFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>, int&);
+bool readTrainingFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>);
 
 //write computed probabilities into file
-void writeProbabilitiesToFile(shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, shared_ptr<Dictionary>, int&);
+void writeProbabilitiesToFile(shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, shared_ptr<Dictionary>);
 
 //read words from test file, used for smooting!
-bool readTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>, int&);
+bool readTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>);
 
 //categorize texts from test file, prints selected category, confidence for category and the true category
-bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary, int& totalQuantity);
+bool categorizationOfTestFile(string, shared_ptr<CountStructure>, shared_ptr< vector< CountStructure > >, bool, shared_ptr<Dictionary>);
 
 int main(int argc, char** argv){
+
 	//global dictionary for all words
 	shared_ptr<Dictionary> dictionary(new Dictionary());
 	//count structures for all categories:
 	shared_ptr<vector< CountStructure > > categoryWordCount(new vector<CountStructure>());
+	//count structure to get quantities for each category (occurences of categories in training data set)
 	shared_ptr<CountStructure> categoryCount(new CountStructure());
-	int totalQuantity;
-
 	//whether the dictionary should be locked, only true is extern dictionary is used.
 	bool lockedDictionary = false;
+
 
 	ParameterParser parser(argv, argc);
 
@@ -77,20 +78,20 @@ int main(int argc, char** argv){
 //read training data file:
 	string trainingDataFile = parser.getFlagValue("-t");
 	cout << "Using file \"" << trainingDataFile << "\" for training data." << endl;
-	readTrainingFile(trainingDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
+	readTrainingFile(trainingDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary);
 	
 	//read test data file:
 	string testDataFile = parser.getFlagValue("-d");
 	cout << "Using file \"" << testDataFile << "\" for test data." << endl;
-	readTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
+	readTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary);
 	
 #ifdef VERBOSE
-	writeProbabilitiesToFile(categoryCount, categoryWordCount, dictionary, totalQuantity);
+	writeProbabilitiesToFile(categoryCount, categoryWordCount, dictionary);
 #endif
 
 	//categorization of test data file:
 	cout << "Categorizing texts from file \"" << testDataFile << "\"." << endl;
-	categorizationOfTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary, totalQuantity);
+	categorizationOfTestFile(testDataFile, categoryCount, categoryWordCount, lockedDictionary, dictionary);
 
 	//print information about the dictionary:
 	cout << "Dictionary-size: " << dictionary->getIndices().size() << endl;
@@ -117,12 +118,11 @@ bool readVocabulary(string vocabularyFile, shared_ptr<Dictionary> dictionary, in
 	}
 }
 
-bool readTrainingFile(string trainingDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr<vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> wordDictionary, int& totalQuantity){
+bool readTrainingFile(string trainingDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr<vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> wordDictionary){
 	string line;
 	ifstream trainingDataFileStream(trainingDataFile);
   	if(trainingDataFileStream.is_open()){
-		int i = 0;
-		while(getline(trainingDataFileStream, line) && i < 1){
+		while(getline(trainingDataFileStream, line)){
 			vector<string> words;
 			istringstream iss(line);
 			string sub;
@@ -144,12 +144,8 @@ bool readTrainingFile(string trainingDataFile, shared_ptr<CountStructure> catego
 				(*categoryWordCount)[index].addWord(word, count, lockedWordDictionary);
 				//cout << "Word: " << word << ": " << count << endl;
 			}
-			//i++;
 		}
-		for(int i : categoryCount->getIndices()){
-			totalQuantity += (*categoryWordCount)[i].getTotalQuantity();
-		}
-
+		
     	trainingDataFileStream.close();
 
 		return true;
@@ -159,12 +155,12 @@ bool readTrainingFile(string trainingDataFile, shared_ptr<CountStructure> catego
 	}
 }
 
-void writeProbabilitiesToFile(shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, shared_ptr<Dictionary> wordDictionary, int& totalQuantity){
+void writeProbabilitiesToFile(shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, shared_ptr<Dictionary> wordDictionary){
 	//write category probabilities to file:
 	ofstream categoryProbabilities("catProb.txt");
-	categoryProbabilities << "Probabilities for categories in relative frequencies: lenght texts of category c / total length of all texts = " << totalQuantity << endl;
+	categoryProbabilities << "Probabilities for categories in relative frequencies: #occurences of category c / #all texts in training data" << endl;
 	for(int i : categoryCount->getIndices()){
-		categoryProbabilities << "p(\"" << categoryCount->getDictionary()->getWord(i) << "\") = " << (((long double) (*categoryWordCount)[i].getTotalQuantity() / (long double) totalQuantity)) << endl;
+		categoryProbabilities << "p(\"" << categoryCount->getDictionary()->getWord(i) << "\") = " << categoryCount->getProbability(i) << endl;
 	}
 	categoryProbabilities.close();
 	cout << "Wrote probabilities for categories to file \"catProb.txt\"." << endl;
@@ -186,7 +182,7 @@ void writeProbabilitiesToFile(shared_ptr<CountStructure> categoryCount, shared_p
 	cout << "Wrote probabilities for words in each category to file \"wordProb.txt\"." << endl;
 }
 
-bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary, int& totalQuantity){
+bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary){
 	string line;
 	ifstream testDataFileStream(testDataFile);
   	if(testDataFileStream.is_open()){
@@ -220,7 +216,7 @@ bool readTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount,
 	}
 }
 
-bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary, int& totalQuantity){
+bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> categoryCount, shared_ptr< vector< CountStructure > > categoryWordCount, bool lockedWordDictionary, shared_ptr<Dictionary> dictionary){
 #ifdef VERBOSE
 	ofstream categoryAssignmentFile("result.txt");
 #endif
@@ -257,8 +253,7 @@ bool categorizationOfTestFile(string testDataFile, shared_ptr<CountStructure> ca
 			double selectedConfidence = -numeric_limits<long double>::max();
 			for(int categoryIndex : categoryCount->getIndices()){
 				long double wordsInClass = (long double) (*categoryWordCount)[categoryIndex].getTotalQuantity();
-				//long double confidence = log(wordsInClass) - log((long double) totalQuantity);
-				long double confidence = log(wordsInClass / ((long double) totalQuantity));
+				long double confidence = log(categoryCount->getProbability(categoryIndex));
 				
 				for(int wordIndex : wordIndices){
 					long double wordQuantity = (long double) (*categoryWordCount)[categoryIndex].getQuantity(wordIndex);
